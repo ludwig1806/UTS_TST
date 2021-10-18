@@ -81,15 +81,15 @@ async def read_all_user():
     return data_login
 
 @app.post('/user', tags=['post'])
-async def post_menu(username:str, password: str):
+async def signUp(username:str, password: str):
     id = 1
     if (len(data_login['user'])>0) :
-        id=data['user'][len(data_login['user'])-1]['id']+1
+        id=data_login['user'][len(data_login['user'])-1]['id']+1
     new_data ={'id':id, 'username':username, "password": password}
-    data['user'].append(dict(new_data))
+    data_login['user'].append(dict(new_data))
     read_file.close()
     with open("user.json", "w") as write_file:
-        json.dump(data,write_file,indent=4)
+        json.dump(data_login,write_file,indent=4)
     write_file.close()
 
     return (new_data)
@@ -97,3 +97,17 @@ async def post_menu(username:str, password: str):
     raise HTTPEXCEPTION(
         status_code=500, detail=f'Internal server error'
     )
+
+def check_user(username:str, password: str):
+    for user in data_login['user']:
+        if user.username == data_login.username and user.password == data_login.password:
+            return True
+    return False
+
+@app.post("/user", tags=["user"])
+async def user_login(username:str, password: str):
+    if check_user(username, password):
+        return "Login Berhasil"
+    return {
+        "error": "Wrong login details!"
+    }
