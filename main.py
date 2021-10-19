@@ -1,7 +1,10 @@
 import json
-from fastapi import FastAPI,HTTPException
+from fastapi import FastAPI,HTTPException, Body, Depends
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
+from model import UserLoginSchema, UserSchema
+from auth_bearer import JWTBearer
+from auth_handler import signJWT
 
 with open("menu.json", "r") as read_file:
     data = json.load(read_file)
@@ -9,6 +12,7 @@ with open("menu.json", "r") as read_file:
 with open("user.json", "r") as read_file:
     data_login = json.load(read_file)
 app = FastAPI()
+users = []
 
 @app.get('/', tags=["root"])
 def root() :
@@ -61,7 +65,7 @@ async def update_menu(item_id: int, name: str):
     )
 
     
-@app.delete('/menu/{item_id}', tags=['delete'])
+@app.delete('/menu/{item_id}',dependencies=[Depends(JWTBearer())], tags=['delete'])
 async def delete_menu(item_id: int):
     for menu_item in data['menu']:
         if menu_item['id'] == item_id:
@@ -76,38 +80,21 @@ async def delete_menu(item_id: int):
         status_code =404, detail=f'"Item not found'
     )
 
-@app.get('/user/',tags =["get"])
-async def read_all_user():
-    return data_login
+@app.post("/user/signup", tags=["user"])
+async def create_user(user: UserSchema = Body(...)):
+    users.append(user) # replace with db call, making sure to hash the password first
+    return signJWT(user.email)
 
-@app.post('/user', tags=['post'])
-async def signUp(username:str, password: str):
-    id = 1
-    if (len(data_login['user'])>0) :
-        id=data_login['user'][len(data_login['user'])-1]['id']+1
-    new_data ={'id':id, 'username':username, "password": password}
-    data_login['user'].append(dict(new_data))
-    read_file.close()
-    with open("user.json", "w") as write_file:
-        json.dump(data_login,write_file,indent=4)
-    write_file.close()
-
-    return (new_data)
-
-    raise HTTPEXCEPTION(
-        status_code=500, detail=f'Internal server error'
-    )
-
-def check_user(username:str, password: str):
-    for user in data_login['user']:
-        if user.username == data_login.username and user.password == data_login.password:
+def check_user(data: UserLoginSchema):
+    for user in users:
+        if user.email == data.email and user.password == data.password:
             return True
     return False
 
-@app.post("/user", tags=["user"])
-async def user_login(username:str, password: str):
-    if check_user(username, password):
-        return "Login Berhasil"
+@app.post("/user/login", tags=["user"])
+async def user_login(user: UserLoginSchema = Body(...)):
+    if check_user(user):
+        return signJWT(user.email)
     return {
         "error": "Wrong login details!"
     }
