@@ -16,7 +16,7 @@ users = []
 
 @app.get('/', tags=["root"])
 def root() :
-    return {"Menu" : "Item"}
+    return {"Welcome to my server"}
     
 @app.get('/menu/',tags =["get"])
 async def read_all_menu():
@@ -82,7 +82,7 @@ async def delete_menu(item_id: int):
 
 @app.post("/user/signup", tags=["user"])
 async def create_user(user: UserSchema = Body(...)):
-    users.append(user) # replace with db call, making sure to hash the password first
+    users.append(user)
     return signJWT(user.email)
 
 def check_user(data: UserLoginSchema):
